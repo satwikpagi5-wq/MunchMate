@@ -14,7 +14,8 @@ import {
   Search,
   Filter,
   MoreVertical,
-  QrCode
+  QrCode,
+  CreditCard
 } from "lucide-react";
 import { api } from "../services/api";
 import { Order } from "../types";
@@ -83,6 +84,14 @@ export default function AdminDashboard() {
   const handleBookingStatus = async (bookingId: string, status: string) => {
     await api.updateBookingStatus(bookingId, status);
   };
+
+  const handlePaymentStatusUpdate = async (orderId: string, status: string) => {
+    // Treat confirming payment as starting preparation
+    await handleStatusUpdate(orderId, "preparing");
+  };
+
+  const pendingPayments = orders.filter(o => o.status === "pending");
+  const receivedPayments = orders.filter(o => o.status !== "pending");
 
   const filteredOrders = orders.filter(o => 
     o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
