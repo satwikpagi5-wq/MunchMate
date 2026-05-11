@@ -217,7 +217,7 @@ export default function LoginPage() {
                     : "bg-gray-900 hover:bg-[#E2262E] shadow-red-500/10"
                 )}
               >
-                {loading ? "Authenticating..." : role === "admin" ? "Enter Admin Dashboard" : "Sign in / Sign up"}
+                {loading ? "Authenticating..." : role === "admin" ? "Log in or Create Merchant Account" : "Sign in / Sign up"}
                 <ChevronRight size={18} />
               </button>
             </motion.form>

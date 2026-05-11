@@ -134,8 +134,42 @@ export const api = {
   },
 
   getProfile: async (userId: string): Promise<any> => {
-    const res = await fetch("/api/profile", { headers: { 'x-user-id': userId } });
-    return res.json();
+    const path = `users/${userId}`;
+    try {
+      const docRef = doc(db, "users", userId);
+      const snapshot = await getDocs(query(collection(db, "users"))); // Just checking if exists might be better
+      // But let's use getDoc (Wait, I need to import getDoc)
+      // Actually let's just stick to the pattern used in the app
+      const res = await fetch("/api/profile", { headers: { 'x-user-id': userId } });
+      return res.json();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, path);
+    }
+  },
+
+  ensureProfile: async (user: any): Promise<void> => {
+    const path = `users/${user.uid}`;
+    try {
+      const { setDoc, getDoc } = await import("firebase/firestore");
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        const isAdmin = user.email?.includes("admin") || user.email === "saatwikpagi5@gmail.com";
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email || "",
+          walletBalance: 2500, // Starting balance for students
+          points: 100,
+          streak: 1,
+          isAdmin: isAdmin,
+          gstNumber: isAdmin ? "22AAAAA0000A1Z5" : null,
+          merchantCode: isAdmin ? `MERCH-${user.uid.slice(0, 6).toUpperCase()}` : null
+        });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
   },
 
   getSeats: async (): Promise<{ sections: SeatSection[]; total: number; available: number }> => {

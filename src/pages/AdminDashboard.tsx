@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   BarChart3, 
@@ -19,14 +21,40 @@ import { Order } from "../types";
 import { cn } from "../lib/utils";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"orders" | "financials" | "bookings">("orders");
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"orders" | "payments" | "financials" | "bookings">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [financials, setFinancials] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        navigate("/login?role=admin");
+        return;
+      }
+      
+      // Basic check: In a real app, you'd check a field in Firestore or a custom claim
+      // For this app, we'll allow the creator or anyone with 'admin' in their email (demo logic)
+      // or specifically the user's email provided in the prompt context.
+      const isUserAdmin = user.email === "saatwikpagi5@gmail.com" || user.email?.includes("admin");
+      setIsAdmin(isUserAdmin);
+      
+      if (!isUserAdmin) {
+        // Not an admin? Redirect to home
+        navigate("/");
+        return;
+      }
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
     // Live subscriber for orders
     const unsubscribeOrders = api.subscribeToOrders((data) => {
       setOrders(data);
@@ -114,6 +142,21 @@ export default function AdminDashboard() {
             Financials
           </button>
           <button 
+            onClick={() => setActiveTab("payments")}
+            className={cn(
+               "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+               activeTab === "payments" ? "bg-gray-900 text-white shadow-xl shadow-gray-900/10" : "text-gray-500 hover:bg-gray-100"
+            )}
+          >
+            <CreditCard size={18} />
+            Payment Status
+            {pendingPayments.length > 0 && (
+               <span className="ml-auto w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                 {pendingPayments.length}
+               </span>
+            )}
+          </button>
+          <button 
             onClick={() => setActiveTab("bookings")}
             className={cn(
                "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
@@ -144,7 +187,7 @@ export default function AdminDashboard() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-black tracking-tight mb-2">
-              {activeTab === "orders" ? "Kitchen Feed" : activeTab === "financials" ? "Financial Summary" : "Table Bookings"}
+              {activeTab === "orders" ? "Kitchen Feed" : activeTab === "payments" ? "Payment Verification" : activeTab === "financials" ? "Financial Summary" : "Table Bookings"}
             </h1>
             <p className="text-gray-500 text-sm">Managing the daily crunch at Parul Goa.</p>
           </div>
@@ -255,6 +298,79 @@ export default function AdminDashboard() {
                  )}
                </AnimatePresence>
             </div>
+          </div>
+        ) : activeTab === "payments" ? (
+          <div className="space-y-12">
+            {/* Pending Section */}
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-red-50 rounded-2xl flex items-center justify-center text-red-600">
+                  <Clock size={20} />
+                </div>
+                <h2 className="text-2xl font-black">Pending Payments</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingPayments.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-gray-400 bg-gray-50 rounded-[32px] border border-dashed border-gray-200">
+                    No pending payments. Good job!
+                  </div>
+                ) : (
+                  pendingPayments.map(order => (
+                    <div key={order.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                      <div className="flex justify-between mb-4">
+                        <div>
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</p>
+                          <p className="font-bold">#{order.id.slice(-6).toUpperCase()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</p>
+                          <p className="text-xl font-black text-gray-900">₹{order.total}</p>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-2xl mb-6">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-xs font-medium">
+                            <span className="text-gray-500">{item.quantity}x {item.name}</span>
+                            <span className="text-gray-900">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button 
+                        onClick={() => handlePaymentStatusUpdate(order.id, "Paid")}
+                        className="w-full py-4 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-green-600/20 hover:scale-[1.02] transition-transform"
+                      >
+                        Confirm UPI Received
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            {/* Received Section */}
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
+                  <CheckCircle2 size={20} />
+                </div>
+                <h2 className="text-2xl font-black text-gray-400">Recently Received</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {receivedPayments.slice(0, 6).map(order => (
+                  <div key={order.id} className="bg-gray-50/50 p-5 rounded-[28px] border border-gray-100 opacity-60">
+                    <div className="flex justify-between items-center mb-2">
+                       <span className="text-[10px] font-black text-gray-400 uppercase">#{order.id.slice(-4)}</span>
+                       <span className="text-sm font-black text-green-600">₹{order.total}</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-500 truncate">
+                      {order.items.map(i => i.name).join(", ")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         ) : activeTab === "bookings" ? (
           <div className="space-y-8">
