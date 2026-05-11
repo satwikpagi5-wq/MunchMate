@@ -1,111 +1,150 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  updateDoc,
-  Timestamp 
-} from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
 import { MenuItem, Order, QueueItem, SeatSection } from "../types";
-import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 
 export const api = {
   // Menu
   getMenu: async (): Promise<MenuItem[]> => {
-    const path = "menu";
     try {
-      const querySnapshot = await getDocs(collection(db, path));
-      if (querySnapshot.empty) {
-        // Fallback to Express if Firestore is empty for initial run
+      const { data, error } = await supabase.from('menu').select('*');
+      
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        // Fallback to Express if Supabase table is empty for initial run
         const res = await fetch("/api/menu");
         return res.json();
       }
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+      return data as MenuItem[];
     } catch (error) {
-      if (error instanceof Error && error.message.includes('"error":')) {
-        throw error;
-      }
-      handleFirestoreError(error, OperationType.GET, path);
-      // This line is unreachable but keeps TS happy
+      console.error("Error fetching menu:", error);
       return [];
     }
   },
 
   // Orders
   placeOrder: async (items: any[], total: number, pickupTime?: string, location?: string, userId?: string): Promise<Order> => {
-    const path = "orders";
     const orderData = {
       items,
       total,
-      userId: userId || "unknown",
-      pickupTime: pickupTime || "ASAP",
+      user_id: userId || "unknown", // Using snake_case for Postgres
+      pickup_time: pickupTime || "ASAP",
       location: location || "Canteen",
       status: "pending",
-      paymentStatus: "Paid (Munch-Wallet)",
-      createdAt: Timestamp.now(),
-      qrCode: `MUNCH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+      payment_status: "Paid (Munch-Wallet)",
+      qr_code: `MUNCH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
     };
 
     try {
-      const docRef = await addDoc(collection(db, path), orderData);
-      return { id: docRef.id, ...orderData, timestamp: orderData.createdAt.toDate() } as Order;
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return { 
+        id: data.id, 
+        ...data, 
+        timestamp: new Date(data.created_at) 
+      } as unknown as Order; // Mapping Postgres keys to our internal type
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.error("Error placing order:", error);
       throw error;
     }
   },
 
   // Live Subscriptions
   subscribeToOrders: (callback: (orders: Order[]) => void) => {
-    const path = "orders";
-    const q = query(collection(db, path), orderBy("createdAt", "desc"));
-    return onSnapshot(q, (snapshot) => {
-      const orders = snapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        timestamp: (doc.data().createdAt as Timestamp).toDate()
-      } as Order));
-      callback(orders);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
+    const channel = supabase
+      .channel('orders_channel')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        async () => {
+          // Fetch latest when a change happens
+          const { data } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+          if (data) {
+            const mappedOrders = data.map(d => ({
+              id: d.id,
+              ...d,
+              timestamp: new Date(d.created_at)
+            })) as unknown as Order[];
+            callback(mappedOrders);
+          }
+        }
+      )
+      .subscribe();
+      
+    // Initial fetch
+    supabase.from('orders').select('*').order('created_at', { ascending: false }).then(({data}) => {
+      if (data) {
+        callback(data.map(d => ({id: d.id, ...d, timestamp: new Date(d.created_at)})) as unknown as Order[]);
+      }
     });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   subscribeToQueue: (callback: (queue: QueueItem[]) => void) => {
-    const path = "orders";
-    const q = query(collection(db, path), orderBy("createdAt", "desc"));
-    return onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs
-        .filter(doc => doc.data().status !== "delivered")
-        .map(doc => ({ 
-          orderId: doc.id, 
-          status: doc.data().status.charAt(0).toUpperCase() + doc.data().status.slice(1)
-        } as QueueItem));
-      callback(items);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
+    const channel = supabase
+      .channel('queue_channel')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        async () => {
+          const { data } = await supabase
+            .from('orders')
+            .select('id, status')
+            .neq('status', 'delivered')
+            .order('created_at', { ascending: false });
+            
+          if (data) {
+            callback(data.map(d => ({ 
+              orderId: d.id, 
+              status: d.status.charAt(0).toUpperCase() + d.status.slice(1) 
+            })));
+          }
+        }
+      )
+      .subscribe();
+      
+    // Initial fetch
+    supabase.from('orders').select('id, status').neq('status', 'delivered').order('created_at', { ascending: false }).then(({data}) => {
+      if (data) {
+        callback(data.map(d => ({ orderId: d.id, status: d.status.charAt(0).toUpperCase() + d.status.slice(1) })));
+      }
     });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   updateOrderStatus: async (orderId: string, status: string): Promise<void> => {
-    const path = `orders/${orderId}`;
     try {
-      const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, { status });
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId);
+        
+      if (error) throw error;
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.error("Error updating order:", error);
     }
   },
 
   getFinancials: async (): Promise<any> => {
-    const path = "orders";
     try {
-      const snapshot = await getDocs(collection(db, path));
-      const orders = snapshot.docs.map(doc => doc.data());
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('id, total, status')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
       
       const todayRevenue = orders
         .filter(o => o.status !== "pending")
@@ -115,25 +154,29 @@ export const api = {
         .filter(o => o.status === "pending")
         .reduce((sum, o) => sum + (o.total || 0), 0);
 
-      const transactions = snapshot.docs.map(d => ({
+      const transactions = orders.map(d => ({
         id: `TRX-${d.id}`,
         orderId: d.id,
-        amount: d.data().total,
-        status: d.data().status === "pending" ? "Pending" : "Success",
+        amount: d.total,
+        status: d.status === "pending" ? "Pending" : "Success",
         method: "Munch-Wallet"
-      })).reverse();
+      }));
 
-      return {
-        todayRevenue,
-        pendingPayments,
-        transactions
-      };
+      return { todayRevenue, pendingPayments, transactions };
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, path);
+      console.error("Error getting financials:", error);
+      return { todayRevenue: 0, pendingPayments: 0, transactions: [] };
     }
   },
 
   getProfile: async (userId: string): Promise<any> => {
+    // If you have a profiles table in Supabase, you can fetch from there.
+    // Otherwise fallback to Express mock.
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (!error && data) return data;
+    } catch {}
+    
     const res = await fetch("/api/profile", { headers: { 'x-user-id': userId } });
     return res.json();
   },
@@ -145,43 +188,57 @@ export const api = {
 
   // Bookings
   bookSeat: async (bookingData: any) => {
-    const path = "bookings";
     const data = {
       ...bookingData,
-      status: "confirmed",
-      createdAt: Timestamp.now()
+      status: "confirmed"
     };
     try {
-      const docRef = await addDoc(collection(db, path), data);
-      return { id: docRef.id, ...data };
+      const { data: inserted, error } = await supabase
+        .from('bookings')
+        .insert([data])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return inserted;
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.error("Error booking seat:", error);
       throw error;
     }
   },
 
   subscribeToBookings: (callback: (bookings: any[]) => void) => {
-    const path = "bookings";
-    const q = query(collection(db, path), orderBy("createdAt", "desc"));
-    return onSnapshot(q, (snapshot) => {
-      const bookings = snapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate()
-      }));
-      callback(bookings);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
+    const channel = supabase
+      .channel('bookings_channel')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'bookings' }, 
+        async () => {
+          const { data } = await supabase
+            .from('bookings')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (data) callback(data);
+        }
+      )
+      .subscribe();
+      
+    supabase.from('bookings').select('*').order('created_at', { ascending: false }).then(({data}) => {
+      if (data) callback(data);
     });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   updateBookingStatus: async (bookingId: string, status: string): Promise<void> => {
-    const path = `bookings/${bookingId}`;
     try {
-      const bookingRef = doc(db, "bookings", bookingId);
-      await updateDoc(bookingRef, { status });
+      await supabase
+        .from('bookings')
+        .update({ status })
+        .eq('id', bookingId);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.error("Error updating booking:", error);
     }
   }
 };

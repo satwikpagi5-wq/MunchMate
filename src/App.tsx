@@ -206,9 +206,9 @@ export default function App() {
                 <div>
                   <h4 className="font-bold text-sm mb-4 uppercase tracking-widest">Support</h4>
                   <ul className="space-y-2 text-sm text-gray-500">
-                    <li><a href="#" className="hover:text-orange-500">Help Center</a></li>
-                    <li><a href="#" className="hover:text-orange-500">Feedback</a></li>
-                    <li><a href="#" className="hover:text-orange-500">Contact Us</a></li>
+                    <li><a href="mailto:support@munchmate.com" className="hover:text-orange-500">Help Center</a></li>
+                    <li><a href="mailto:feedback@munchmate.com" className="hover:text-orange-500">Feedback</a></li>
+                    <li><a href="mailto:contact@munchmate.com" className="hover:text-orange-500">Contact Us</a></li>
                   </ul>
                 </div>
               </div>

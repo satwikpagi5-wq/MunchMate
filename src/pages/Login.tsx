@@ -1,12 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-  ConfirmationResult
-} from "firebase/auth";
-import { auth } from "../lib/firebase";
+import React, { useState } from "react";
+import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Mail, Phone, Lock, ChevronRight, Hash, ShieldCheck, AlertCircle } from "lucide-react";
@@ -22,41 +15,43 @@ export default function LoginPage() {
   const [step, setStep] = useState<"input" | "otp">("input");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   
   const navigate = useNavigate();
-  const recaptchaRef = useRef<HTMLDivElement>(null);
-  const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null);
-
-  useEffect(() => {
-    if (method === "phone" && !recaptchaVerifier.current && recaptchaRef.current) {
-        recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaRef.current, {
-            size: "invisible",
-            callback: () => {
-                // reCAPTCHA solved, allow signInWithPhoneNumber.
-            }
-        });
-    }
-  }, [method]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate(role === "admin" ? "/admin" : "/");
-    } catch (err: any) {
-      if (err.code === "auth/user-not-found") {
-        try {
-          await createUserWithEmailAndPassword(auth, email, password);
-          navigate(role === "admin" ? "/admin" : "/");
-        } catch (innerErr: any) {
-          setError(innerErr.message);
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        if (signInError.message.includes("Invalid login credentials")) {
+          // Attempt sign up if login fails
+          const { error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { role } // This is sent to the trigger!
+            }
+          });
+          
+          if (signUpError) {
+            setError(signUpError.message);
+          } else {
+            navigate(role === "admin" ? "/admin" : "/");
+          }
+        } else {
+          setError(signInError.message);
         }
       } else {
-        setError(err.message);
+        navigate(role === "admin" ? "/admin" : "/");
       }
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -64,13 +59,14 @@ export default function LoginPage() {
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recaptchaVerifier.current) return;
-    
     setLoading(true);
     setError(null);
     try {
-      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier.current);
-      setConfirmationResult(result);
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: phoneNumber,
+      });
+
+      if (error) throw error;
       setStep("otp");
     } catch (err: any) {
       setError("Failed to send code. Make sure format is +[countrycode][number]");
@@ -82,12 +78,16 @@ export default function LoginPage() {
 
   const handleOtpVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!confirmationResult) return;
-    
     setLoading(true);
     setError(null);
     try {
-      await confirmationResult.confirm(otp);
+      const { error } = await supabase.auth.verifyOtp({
+        phone: phoneNumber,
+        token: otp,
+        type: 'sms'
+      });
+
+      if (error) throw error;
       navigate(role === "admin" ? "/admin" : "/");
     } catch (err: any) {
       setError("Invalid OTP code. Please try again.");
@@ -244,7 +244,6 @@ export default function LoginPage() {
                       />
                     </div>
                   </div>
-                  <div ref={recaptchaRef} />
                   <button 
                     disabled={loading}
                     className={cn(
