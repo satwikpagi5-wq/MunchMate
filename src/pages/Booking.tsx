@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { api } from "../services/api";
 import { SeatSection } from "../types";
+import { useAuth } from "../context/AuthContext";
 import { 
   Users, 
   Clock, 
@@ -17,6 +18,7 @@ import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 
 export default function Booking() {
+  const { user } = useAuth();
   const [sections, setSections] = useState<SeatSection[]>([]);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [guests, setGuests] = useState(1);
@@ -43,7 +45,7 @@ export default function Booking() {
       sectionId: selectedSection,
       guests,
       time: timeSlot,
-      userId: "test-user-123"
+      userId: user?.uid || "anonymous"
     });
     
     setIsBooked(true);

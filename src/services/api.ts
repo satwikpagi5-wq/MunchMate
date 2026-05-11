@@ -143,12 +143,45 @@ export const api = {
     return res.json();
   },
 
+  // Bookings
   bookSeat: async (bookingData: any) => {
-    const res = await fetch("/api/book-seat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bookingData),
+    const path = "bookings";
+    const data = {
+      ...bookingData,
+      status: "confirmed",
+      createdAt: Timestamp.now()
+    };
+    try {
+      const docRef = await addDoc(collection(db, path), data);
+      return { id: docRef.id, ...data };
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+      throw error;
+    }
+  },
+
+  subscribeToBookings: (callback: (bookings: any[]) => void) => {
+    const path = "bookings";
+    const q = query(collection(db, path), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (snapshot) => {
+      const bookings = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        createdAt: (doc.data().createdAt as Timestamp).toDate()
+      }));
+      callback(bookings);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
     });
-    return res.json();
+  },
+
+  updateBookingStatus: async (bookingId: string, status: string): Promise<void> => {
+    const path = `bookings/${bookingId}`;
+    try {
+      const bookingRef = doc(db, "bookings", bookingId);
+      await updateDoc(bookingRef, { status });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
   }
 };

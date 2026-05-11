@@ -25,6 +25,17 @@ export interface Order {
   timestamp: Date;
   pickupTime?: string;
   qrCode?: string;
+  paymentStatus?: string;
+}
+
+export interface Booking {
+  id: string;
+  userId: string;
+  sectionId: string;
+  time: string;
+  guests: number;
+  createdAt: Date;
+  status?: "confirmed" | "seated" | "cancelled";
 }
 
 export interface SeatSection {

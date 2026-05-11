@@ -19,29 +19,41 @@ import { Order } from "../types";
 import { cn } from "../lib/utils";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"orders" | "financials">("orders");
+  const [activeTab, setActiveTab] = useState<"orders" | "financials" | "bookings">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [financials, setFinancials] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     // Live subscriber for orders
-    const unsubscribe = api.subscribeToOrders((data) => {
+    const unsubscribeOrders = api.subscribeToOrders((data) => {
       setOrders(data);
       setLoading(false);
     });
 
-    // Fetch financials separately (could also be real-time if needed)
+    // Live subscriber for bookings
+    const unsubscribeBookings = api.subscribeToBookings((data) => {
+      setBookings(data);
+    });
+
+    // Fetch financials
     api.getFinancials().then(setFinancials);
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeOrders();
+      unsubscribeBookings();
+    };
   }, []);
 
   const handleStatusUpdate = async (orderId: string, status: string) => {
     await api.updateOrderStatus(orderId, status);
-    // Financials might need re-fetching if status changed
     api.getFinancials().then(setFinancials);
+  };
+
+  const handleBookingStatus = async (bookingId: string, status: string) => {
+    await api.updateBookingStatus(bookingId, status);
   };
 
   const filteredOrders = orders.filter(o => 
@@ -101,6 +113,21 @@ export default function AdminDashboard() {
             <BarChart3 size={18} />
             Financials
           </button>
+          <button 
+            onClick={() => setActiveTab("bookings")}
+            className={cn(
+               "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+               activeTab === "bookings" ? "bg-gray-900 text-white shadow-xl shadow-gray-900/10" : "text-gray-500 hover:bg-gray-100"
+            )}
+          >
+            <Users size={18} />
+            Table Bookings
+            {bookings.filter(b => b.status === "confirmed").length > 0 && (
+               <span className="ml-auto w-5 h-5 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                 {bookings.filter(b => b.status === "confirmed").length}
+               </span>
+            )}
+          </button>
         </nav>
 
         <div className="mt-auto p-6 bg-orange-50 rounded-3xl border border-orange-100">
@@ -117,7 +144,7 @@ export default function AdminDashboard() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-black tracking-tight mb-2">
-              {activeTab === "orders" ? "Kitchen Feed" : "Financial Summary"}
+              {activeTab === "orders" ? "Kitchen Feed" : activeTab === "financials" ? "Financial Summary" : "Table Bookings"}
             </h1>
             <p className="text-gray-500 text-sm">Managing the daily crunch at Parul Goa.</p>
           </div>
@@ -181,6 +208,9 @@ export default function AdminDashboard() {
                              <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest", getStatusColor(order.status))}>
                                {order.status}
                              </span>
+                             <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                               {order.paymentStatus || "Paid (Wallet)"}
+                             </span>
                            </div>
                            <p className="text-xs text-gray-500 mb-2 truncate max-w-md">
                              {order.items.map(i => `${i.quantity}x ${i.name}`).join(", ")}
@@ -224,6 +254,69 @@ export default function AdminDashboard() {
                     ))
                  )}
                </AnimatePresence>
+            </div>
+          </div>
+        ) : activeTab === "bookings" ? (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AnimatePresence>
+                {bookings.length === 0 ? (
+                  <div className="col-span-full py-20 text-center text-gray-400">No active table bookings.</div>
+                ) : (
+                  bookings.map(booking => (
+                    <motion.div 
+                      key={booking.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-900">
+                            <Users size={24} />
+                          </div>
+                          <div>
+                            <h4 className="font-bold">{booking.sectionId}</h4>
+                            <p className="text-xs text-gray-500">{booking.guests} Guests • {booking.time}</p>
+                          </div>
+                        </div>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest",
+                          booking.status === "seated" ? "bg-green-100 text-green-600" : 
+                          booking.status === "cancelled" ? "bg-red-100 text-red-600" : 
+                          "bg-blue-100 text-blue-600"
+                        )}>
+                          {booking.status}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {booking.status === "confirmed" && (
+                          <>
+                            <button 
+                              onClick={() => handleBookingStatus(booking.id, "seated")}
+                              className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest"
+                            >
+                              Mark Seated
+                            </button>
+                            <button 
+                              onClick={() => handleBookingStatus(booking.id, "cancelled")}
+                              className="px-4 py-3 border border-gray-100 text-gray-400 rounded-xl text-xs font-bold uppercase tracking-widest hover:text-red-500"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {booking.status === "seated" && (
+                           <div className="w-full py-3 bg-green-50 text-green-600 rounded-xl text-[10px] font-black uppercase tracking-widest text-center">
+                              Guest checked-in
+                           </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
             </div>
           </div>
         ) : (
