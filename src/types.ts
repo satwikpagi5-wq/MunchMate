@@ -51,7 +51,11 @@ export interface QueueItem {
 
 export interface UserProfile {
   uid: string;
+  email?: string;
   walletBalance: number;
   points: number;
   streak: number;
+  isAdmin?: boolean;
+  gstNumber?: string;
+  merchantCode?: string;
 }

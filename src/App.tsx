@@ -27,21 +27,9 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const location = useLocation();
-  const { user, logout } = useAuth();
-  const [wallet, setWallet] = useState(0);
-  const [points, setPoints] = useState(0);
-
-  useEffect(() => {
-    if (user) {
-      fetch("/api/profile", { headers: { 'x-user-id': user.uid } })
-        .then(res => res.json())
-        .then(data => {
-          setWallet(data.walletBalance);
-          setPoints(data.points);
-        });
-    }
-  }, [user]);
+  const { user, profile, logout } = useAuth();
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
@@ -79,16 +67,19 @@ function Navbar() {
       </div>
 
       <div className="flex items-center gap-4">
-        {user && (
-          <div className="hidden sm:flex items-center gap-3 mr-2 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">
+        {user && profile && (
+          <button 
+            onClick={() => setIsProfileOpen(true)}
+            className="hidden sm:flex items-center gap-3 mr-2 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100 hover:bg-orange-100 transition-colors"
+          >
              <div className="flex items-center gap-1.5 text-xs font-bold text-orange-600">
-                <Sparkles size={14} /> {points} Pts
+                <Sparkles size={14} /> {profile.points || 0} Pts
              </div>
              <div className="w-px h-3 bg-orange-200" />
              <div className="text-xs font-bold text-orange-600">
-                ₹{wallet}
+                ₹{profile.walletBalance || 0}
              </div>
-          </div>
+          </button>
         )}
 
         {user ? (
@@ -99,9 +90,12 @@ function Navbar() {
              >
                Sign Out
              </button>
-             <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold ring-2 ring-orange-500 ring-offset-2">
+             <button 
+               onClick={() => setIsProfileOpen(true)}
+               className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold ring-2 ring-orange-500 ring-offset-2 hover:scale-110 transition-transform"
+             >
                {user.email?.[0].toUpperCase() || user.phoneNumber?.slice(-2)}
-             </div>
+             </button>
           </div>
         ) : (
           <Link 
@@ -124,6 +118,85 @@ function Navbar() {
           {isOpen ? <X /> : <MenuIcon />}
         </button>
       </div>
+
+      {/* Profile Modal */}
+      <AnimatePresence>
+        {isProfileOpen && user && profile && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsProfileOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl p-8 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-4">
+                <button onClick={() => setIsProfileOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-gray-900 text-white rounded-3xl flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-xl shadow-gray-900/20">
+                  {user.email?.[0].toUpperCase()}
+                </div>
+                <h3 className="text-xl font-bold">{profile.isAdmin ? "Merchant Account" : "Student Account"}</h3>
+                <p className="text-gray-500 text-sm">{user.email}</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-1">Munch Balance</p>
+                    <p className="text-2xl font-black text-orange-600">₹{profile.walletBalance || 0}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-1">Crave Points</p>
+                    <p className="text-2xl font-black text-orange-600">{profile.points || 0}</p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-500">Unique Code</span>
+                    <span className="text-xs font-mono font-bold bg-white px-2 py-1 rounded-lg border border-gray-100">
+                      {profile.merchantCode || profile.uid.slice(0, 8).toUpperCase()}
+                    </span>
+                  </div>
+                  {profile.isAdmin && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">GST Number</span>
+                      <span className="text-xs font-bold">{profile.gstNumber || "N/A"}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-500">Role</span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest",
+                      profile.isAdmin ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
+                    )}>
+                      {profile.isAdmin ? "Merchant" : "Student"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => { logout(); setIsProfileOpen(false); }}
+                className="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 transition-colors shadow-xl shadow-gray-900/10"
+              >
+                Sign Out
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Nav Overlay */}
       <AnimatePresence>

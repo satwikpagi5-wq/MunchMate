@@ -170,15 +170,46 @@ export const api = {
   },
 
   getProfile: async (userId: string): Promise<any> => {
-    // If you have a profiles table in Supabase, you can fetch from there.
-    // Otherwise fallback to Express mock.
     try {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (!error && data) return data;
-    } catch {}
+    } catch (error) {
+      console.error("Error fetching profile from Supabase:", error);
+    }
     
-    const res = await fetch("/api/profile", { headers: { 'x-user-id': userId } });
-    return res.json();
+    // Fallback to mock API if no profile is found
+    try {
+      const res = await fetch("/api/profile", { headers: { 'x-user-id': userId } });
+      return res.json();
+    } catch (e) {
+      return null;
+    }
+  },
+
+  ensureProfile: async (user: any): Promise<void> => {
+    try {
+      const { data: userSnap, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError || !userSnap) {
+        const isAdmin = user.email?.includes("admin") || user.email === "saatwikpagi5@gmail.com";
+        await supabase.from('profiles').insert([{
+          id: user.id, // Ensure id is mapped to Supabase auth user
+          email: user.email || "",
+          walletBalance: 2500, // Starting balance for students
+          points: 100,
+          streak: 1,
+          isAdmin: isAdmin,
+          gstNumber: isAdmin ? "22AAAAA0000A1Z5" : null,
+          merchantCode: isAdmin ? `MERCH-${user.id.slice(0, 6).toUpperCase()}` : null
+        }]);
+      }
+    } catch (error) {
+      console.error("Error ensuring profile:", error);
+    }
   },
 
   getSeats: async (): Promise<{ sections: SeatSection[]; total: number; available: number }> => {
