@@ -11,9 +11,12 @@ import {
   ChevronRight,
   ChefHat,
   Menu as MenuIcon,
-  X
+  X,
+  Moon,
+  Sun
 } from "lucide-react";
 import { cn } from "./lib/utils";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
 // Pages
 import HomePage from "./pages/Home";
@@ -30,6 +33,7 @@ function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const location = useLocation();
   const { user, profile, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
@@ -41,12 +45,12 @@ function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 h-16 flex items-center px-4 md:px-8 justify-between shadow-sm">
       <Link to="/" className="flex items-center gap-2">
         <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white">
           <UtensilsCrossed size={24} />
         </div>
-        <span className="font-bold text-xl tracking-tight text-gray-900 hidden sm:block">MunchMate<span className="text-orange-500">.</span></span>
+        <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white hidden sm:block">MunchMate<span className="text-orange-500">.</span></span>
       </Link>
 
       {/* Desktop Nav */}
@@ -106,6 +110,14 @@ function Navbar() {
           </Link>
         )}
 
+        <button 
+          onClick={toggleTheme}
+          className="p-2 text-gray-500 hover:text-orange-500 transition-colors"
+          title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+        >
+          {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+        </button>
+
         <button className="relative p-2 text-gray-500 hover:text-orange-500 transition-colors">
           <ShoppingCart size={22} />
           <span className="absolute top-0 right-0 w-4 h-4 bg-orange-500 text-white text-[10px] flex items-center justify-center rounded-full">0</span>
@@ -134,24 +146,24 @@ function Navbar() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl p-8 overflow-hidden"
+              className="relative w-full max-w-sm bg-white dark:bg-gray-900 rounded-[40px] shadow-2xl p-8 overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-4">
-                <button onClick={() => setIsProfileOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <button onClick={() => setIsProfileOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
                   <X size={20} />
                 </button>
               </div>
 
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gray-900 text-white rounded-3xl flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-xl shadow-gray-900/20">
+                <div className="w-20 h-20 bg-gray-900 dark:bg-gray-800 text-white rounded-3xl flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-xl shadow-gray-900/20">
                   {user.email?.[0].toUpperCase()}
                 </div>
                 <h3 className="text-xl font-bold">{profile.isAdmin ? "Merchant Account" : "Student Account"}</h3>
-                <p className="text-gray-500 text-sm">{user.email}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">{user.email}</p>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 flex justify-between items-center">
+                <div className="bg-orange-50 dark:bg-orange-900/20 p-6 rounded-3xl border border-orange-100 dark:border-orange-900/30 flex justify-between items-center">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-1">Munch Balance</p>
                     <p className="text-2xl font-black text-orange-600">₹{profile.walletBalance || 0}</p>
@@ -162,10 +174,10 @@ function Navbar() {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 space-y-3">
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-gray-500">Unique Code</span>
-                    <span className="text-xs font-mono font-bold bg-white px-2 py-1 rounded-lg border border-gray-100">
+                    <span className="text-xs font-mono font-bold bg-white dark:bg-gray-900 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-800">
                       {profile.merchantCode || profile.uid.slice(0, 8).toUpperCase()}
                     </span>
                   </div>
@@ -179,7 +191,7 @@ function Navbar() {
                     <span className="text-xs font-bold text-gray-500">Role</span>
                     <span className={cn(
                       "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest",
-                      profile.isAdmin ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
+                      profile.isAdmin ? "bg-red-100 dark:bg-red-900/20 text-red-600" : "bg-blue-100 dark:bg-blue-900/20 text-blue-600"
                     )}>
                       {profile.isAdmin ? "Merchant" : "Student"}
                     </span>
@@ -189,7 +201,7 @@ function Navbar() {
 
               <button 
                 onClick={() => { logout(); setIsProfileOpen(false); }}
-                className="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 transition-colors shadow-xl shadow-gray-900/10"
+                className="w-full mt-8 py-4 bg-gray-900 dark:bg-gray-800 text-white rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 transition-colors shadow-xl shadow-gray-900/10"
               >
                 Sign Out
               </button>
@@ -205,7 +217,7 @@ function Navbar() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-16 left-0 right-0 bg-white border-b border-gray-100 p-4 flex flex-col gap-4 shadow-xl md:hidden"
+            className="absolute top-16 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 p-4 flex flex-col gap-4 shadow-xl md:hidden"
           >
             {navItems.map((item) => (
               <Link
@@ -214,7 +226,7 @@ function Navbar() {
                 onClick={() => setIsOpen(false)}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg text-base font-medium transition-colors",
-                  location.pathname === item.path ? "bg-orange-50 text-orange-600" : "text-gray-600 hover:bg-gray-50"
+                  location.pathname === item.path ? "bg-orange-50 dark:bg-orange-900/20 text-orange-600" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                 )}
               >
                 <item.icon size={20} />
@@ -239,59 +251,61 @@ function Navbar() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-white font-sans text-gray-900">
-          <Navbar />
-          <main className="pt-16 max-w-7xl mx-auto">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/menu" element={<StorefrontPage />} />
-              <Route path="/booking" element={<BookingPage />} />
-              <Route path="/queue" element={<QueuePage />} />
-              <Route path="/ai" element={<CraveAI />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-            </Routes>
-          </main>
-          
-          {/* Simple Footer */}
-          <footer className="mt-20 border-t border-gray-100 py-12 px-8">
-            <div className="flex flex-col md:flex-row justify-between gap-8">
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <UtensilsCrossed className="text-orange-500" />
-                  <span className="font-bold text-xl tracking-tight">MunchMate</span>
-                </div>
-                <p className="text-gray-500 max-w-xs text-sm">
-                  The ultimate e-canteen solution balancing study and food at Parul University Goa.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-12">
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-white dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300">
+            <Navbar />
+            <main className="pt-16 max-w-7xl mx-auto">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/menu" element={<StorefrontPage />} />
+                <Route path="/booking" element={<BookingPage />} />
+                <Route path="/queue" element={<QueuePage />} />
+                <Route path="/ai" element={<CraveAI />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+              </Routes>
+            </main>
+            
+            {/* Simple Footer */}
+            <footer className="mt-20 border-t border-gray-100 dark:border-gray-800 py-12 px-8">
+              <div className="flex flex-col md:flex-row justify-between gap-8">
                 <div>
-                  <h4 className="font-bold text-sm mb-4 uppercase tracking-widest">Platform</h4>
-                  <ul className="space-y-2 text-sm text-gray-500">
-                    <li><Link to="/menu" className="hover:text-orange-500">Menu</Link></li>
-                    <li><Link to="/booking" className="hover:text-orange-500">Seat Booking</Link></li>
-                    <li><Link to="/queue" className="hover:text-orange-500">Queue Tracker</Link></li>
-                  </ul>
+                  <div className="flex items-center gap-2 mb-4">
+                    <UtensilsCrossed className="text-orange-500" />
+                    <span className="font-bold text-xl tracking-tight">MunchMate</span>
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-xs text-sm">
+                    The ultimate e-canteen solution balancing study and food at Parul University Goa.
+                  </p>
                 </div>
-                <div>
-                  <h4 className="font-bold text-sm mb-4 uppercase tracking-widest">Support</h4>
-                  <ul className="space-y-2 text-sm text-gray-500">
-                    <li><a href="mailto:support@munchmate.com" className="hover:text-orange-500">Help Center</a></li>
-                    <li><a href="mailto:feedback@munchmate.com" className="hover:text-orange-500">Feedback</a></li>
-                    <li><a href="mailto:contact@munchmate.com" className="hover:text-orange-500">Contact Us</a></li>
-                  </ul>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-12">
+                  <div>
+                    <h4 className="font-bold text-sm mb-4 uppercase tracking-widest">Platform</h4>
+                    <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                      <li><Link to="/menu" className="hover:text-orange-500">Menu</Link></li>
+                      <li><Link to="/booking" className="hover:text-orange-500">Seat Booking</Link></li>
+                      <li><Link to="/queue" className="hover:text-orange-500">Queue Tracker</Link></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm mb-4 uppercase tracking-widest">Support</h4>
+                    <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                      <li><a href="#" className="hover:text-orange-500">Help Center</a></li>
+                      <li><a href="#" className="hover:text-orange-500">Feedback</a></li>
+                      <li><a href="#" className="hover:text-orange-500">Contact Us</a></li>
+                    </ul>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="mt-12 pt-8 border-t border-gray-50 text-center text-xs text-gray-400">
-              © 2024 MunchMate PU Goa. Dedicated to the Goa Hackathon.
-            </div>
-          </footer>
-        </div>
-      </Router>
-    </AuthProvider>
+              <div className="mt-12 pt-8 border-t border-gray-50 dark:border-gray-900 text-center text-xs text-gray-400">
+                © 2024 MunchMate PU Goa. Dedicated to the Goa Hackathon.
+              </div>
+            </footer>
+          </div>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

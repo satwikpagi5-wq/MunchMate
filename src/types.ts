@@ -5,6 +5,9 @@ export interface MenuItem {
   category: string;
   description: string;
   image: string;
+  available?: boolean;
+  rating?: number;
+  prepTime?: string;
   macros?: {
     protein: string;
     carbs: string;

@@ -61,16 +61,16 @@ export default function Booking() {
   if (loading) return <div className="p-20 text-center animate-pulse">Loading Canteen Layout...</div>;
 
   return (
-    <div className="px-4 py-12 max-w-4xl mx-auto">
+    <div className="px-4 py-12 max-w-4xl mx-auto text-gray-900 dark:text-white">
       <div className="text-center mb-16">
         <motion.h1 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl font-black tracking-tight mb-4"
+          className="text-5xl font-black tracking-tight mb-4 dark:text-white"
         >
           RESERVE YOUR <span className="text-orange-500">SPOT</span>.
         </motion.h1>
-        <p className="text-gray-500">Choose your preferred section and skip the seating hunt.</p>
+        <p className="text-gray-500 dark:text-gray-400">Choose your preferred section and skip the seating hunt.</p>
       </div>
 
       {!isBooked ? (
@@ -86,20 +86,20 @@ export default function Booking() {
                   className={cn(
                     "w-full p-6 border-2 rounded-[32px] text-left transition-all group flex items-center justify-between",
                     selectedSection === section.id 
-                      ? "border-orange-500 bg-orange-50/50" 
-                      : "border-gray-100 hover:border-gray-200"
+                      ? "border-orange-500 bg-orange-50/50 dark:bg-orange-950/20" 
+                      : "border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 bg-white dark:bg-gray-900"
                   )}
                 >
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
-                      selectedSection === section.id ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
+                      selectedSection === section.id ? "bg-orange-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-700"
                     )}>
                       {getIcon(section.name)}
                     </div>
                     <div>
-                      <h3 className="font-bold">{section.name}</h3>
-                      <p className="text-xs text-gray-500">{section.available} seats ready</p>
+                      <h3 className="font-bold dark:text-white">{section.name}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{section.available} seats ready</p>
                     </div>
                   </div>
                   <div className={cn(
@@ -114,7 +114,7 @@ export default function Booking() {
           </div>
 
           {/* Details */}
-          <div className="bg-gray-50 p-8 rounded-[48px] border border-white">
+          <div className="bg-gray-50 dark:bg-gray-900 p-8 rounded-[48px] border border-white dark:border-gray-800">
             <div className="space-y-8">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Number of Guests</p>
@@ -125,7 +125,7 @@ export default function Booking() {
                       onClick={() => setGuests(num)}
                       className={cn(
                         "w-12 h-12 rounded-xl font-bold transition-all",
-                        guests === num ? "bg-gray-900 text-white" : "bg-white text-gray-400 border border-gray-100"
+                        guests === num ? "bg-gray-900 dark:bg-orange-500 text-white" : "bg-white dark:bg-gray-950 text-gray-400 border border-gray-100 dark:border-gray-800"
                       )}
                     >
                       {num}
@@ -143,7 +143,7 @@ export default function Booking() {
                       onClick={() => setTimeSlot(slot)}
                       className={cn(
                         "py-3 px-4 rounded-xl text-xs font-bold transition-all",
-                        timeSlot === slot ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-white text-gray-500 border border-gray-100"
+                        timeSlot === slot ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-800"
                       )}
                     >
                       {slot}
@@ -152,11 +152,11 @@ export default function Booking() {
                 </div>
               </div>
 
-              <div className="pt-8 mt-8 border-t border-gray-200/50">
+              <div className="pt-8 mt-8 border-t border-gray-200/50 dark:border-gray-800/50">
                 <button
                   disabled={!selectedSection || !timeSlot}
                   onClick={handleBooking}
-                  className="w-full py-5 bg-gray-900 text-white rounded-3xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-500/10 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-5 bg-gray-900 dark:bg-orange-500 text-white rounded-3xl font-bold hover:bg-orange-500 dark:hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/10 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirm Reservation
                   <ChevronRight size={20} />
@@ -177,13 +177,13 @@ export default function Booking() {
           <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-green-500/20">
             <CheckCircle2 size={48} />
           </div>
-          <h2 className="text-4xl font-black mb-4">Seat Reserved!</h2>
-          <p className="text-gray-500 mb-12 max-w-sm">
+          <h2 className="text-4xl font-black mb-4 dark:text-white">Seat Reserved!</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-12 max-w-sm">
             We've saved your spot in the **{sections.find(s => s.id === selectedSection)?.name}** for {guests} guests at {timeSlot}.
           </p>
           <div className="flex gap-4">
-             <button onClick={() => setIsBooked(false)} className="px-8 py-4 bg-gray-100 rounded-2xl font-bold">New Booking</button>
-             <Link to="/menu" className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold">Go to Menu</Link>
+             <button onClick={() => setIsBooked(false)} className="px-8 py-4 bg-gray-100 dark:bg-gray-900 rounded-2xl font-bold dark:text-white dark:border dark:border-gray-800">New Booking</button>
+             <Link to="/menu" className="px-8 py-4 bg-gray-900 dark:bg-orange-500 text-white rounded-2xl font-bold">Go to Menu</Link>
           </div>
         </motion.div>
       )}

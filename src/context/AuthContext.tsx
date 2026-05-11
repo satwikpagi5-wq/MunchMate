@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "../lib/supabase";
+import { onAuthStateChanged, User, signOut } from "firebase/auth";
+import { auth } from "../lib/firebase";
 import { api } from "../services/api";
 
 interface AuthContextType {
@@ -22,39 +22,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (currentUser: User | null) => {
-    if (currentUser) {
-      await api.ensureProfile(currentUser);
-      const userProfile = await api.getProfile(currentUser.id);
-      setProfile(userProfile);
-    } else {
-      setProfile(null);
-    }
-  };
-
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      fetchProfile(currentUser).finally(() => setLoading(false));
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      if (user) {
+        await api.ensureProfile(user);
+        const userProfile = await api.getProfile(user.uid);
+        setProfile(userProfile);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
     });
 
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        await fetchProfile(currentUser);
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-  };
+  const logout = () => signOut(auth);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, logout }}>

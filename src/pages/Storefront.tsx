@@ -93,7 +93,7 @@ export default function Storefront() {
   if (loading) return <div className="p-20 text-center animate-pulse">Loading MunchMate Menu...</div>;
 
   return (
-    <div className="px-4 py-12 flex flex-col md:flex-row gap-12">
+    <div className="px-4 py-12 flex flex-col md:flex-row gap-12 text-gray-900 dark:text-white">
       {/* Sidebar Filters */}
       <aside className="w-full md:w-64 flex-shrink-0">
         <div className="sticky top-24">
@@ -107,7 +107,7 @@ export default function Storefront() {
                 placeholder="Search food..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 text-sm outline-none"
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 text-sm outline-none dark:text-white"
               />
             </div>
           </div>
@@ -120,7 +120,7 @@ export default function Storefront() {
                 onClick={() => setSelectedCategory(cat)}
                 className={cn(
                   "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-between",
-                  selectedCategory === cat ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "text-gray-500 hover:bg-gray-100"
+                  selectedCategory === cat ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                 )}
               >
                 {cat}
@@ -141,8 +141,8 @@ export default function Storefront() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               className={cn(
-                "bg-white border rounded-3xl overflow-hidden group hover:shadow-xl hover:shadow-black/5 transition-all",
-                item.isExamMode ? "border-purple-100 ring-1 ring-purple-100/50 shadow-lg shadow-purple-500/5" : "border-gray-100"
+                "bg-white dark:bg-gray-900 border rounded-3xl overflow-hidden group hover:shadow-xl hover:shadow-black/5 transition-all",
+                item.isExamMode ? "border-purple-100 dark:border-purple-900 ring-1 ring-purple-100/50 shadow-lg shadow-purple-500/5" : "border-gray-100 dark:border-gray-800"
               )}
             >
               <div className="relative h-48 overflow-hidden">
@@ -151,7 +151,7 @@ export default function Storefront() {
                   alt={item.name} 
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
-                <div className="absolute top-4 left-4 px-3 py-1 bg-white/90 backdrop-blur rounded-full text-[10px] font-bold uppercase tracking-wider text-orange-600">
+                <div className="absolute top-4 left-4 px-3 py-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur rounded-full text-[10px] font-bold uppercase tracking-wider text-orange-600">
                   {item.category}
                 </div>
                 {item.isExamMode && (
@@ -161,30 +161,36 @@ export default function Storefront() {
                 )}
               </div>
               <div className="p-6">
-                <h3 className="font-bold text-lg mb-1">{item.name}</h3>
+                <h3 className="font-bold text-lg mb-1 dark:text-white">{item.name}</h3>
                 {item.macros && (
                   <div className="flex gap-3 mb-3 text-[10px] font-bold text-gray-400">
-                    <span className="bg-gray-50 px-2 py-0.5 rounded uppercase">{item.macros.calories} Cal</span>
-                    <span className="bg-gray-50 px-2 py-0.5 rounded uppercase">{item.macros.protein} Protein</span>
+                    <span className="bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded uppercase">{item.macros.calories} Cal</span>
+                    <span className="bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded uppercase">{item.macros.protein} Protein</span>
                   </div>
                 )}
-                <p className="text-gray-500 text-xs line-clamp-2 mb-4 leading-relaxed">
+                <p className="text-gray-500 dark:text-gray-400 text-xs line-clamp-2 mb-4 leading-relaxed">
                   {item.description}
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Price</p>
-                    <p className="text-xl font-black text-gray-900">₹{item.price}</p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white">₹{item.price}</p>
                   </div>
-                  <button 
-                    onClick={() => addToCart(item)}
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center transition-colors shadow-lg active:scale-95",
-                      item.isExamMode ? "bg-purple-600 text-white" : "bg-gray-900 text-white hover:bg-orange-500"
-                    )}
-                  >
-                    <Plus size={20} />
-                  </button>
+                  {item.available !== false ? (
+                    <button 
+                      onClick={() => addToCart(item)}
+                      className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-colors shadow-lg active:scale-95",
+                        item.isExamMode ? "bg-purple-600 text-white" : "bg-gray-900 dark:bg-orange-500 text-white hover:bg-orange-500 dark:hover:bg-orange-600"
+                      )}
+                    >
+                      <Plus size={20} />
+                    </button>
+                  ) : (
+                    <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                       Sold Out
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -219,11 +225,11 @@ export default function Storefront() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-[70] p-8 shadow-2xl flex flex-col overflow-hidden"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gray-900 z-[70] p-8 shadow-2xl flex flex-col overflow-hidden text-gray-900 dark:text-white"
             >
-              <div className="flex items-center justify-between p-8 border-b border-gray-100">
+              <div className="flex items-center justify-between p-8 border-b border-gray-100 dark:border-gray-800">
                 <h2 className="text-3xl font-black tracking-tight">{placedOrder ? "Ready to Munch!" : "Your Munch Cart"}</h2>
-                <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <button onClick={() => setShowCart(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
                   <X />
                 </button>
               </div>
@@ -231,26 +237,26 @@ export default function Storefront() {
               <div className="flex-1 overflow-y-auto p-8 space-y-8">
                 {placedOrder ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <div className="p-6 bg-white border-2 border-orange-100 rounded-[32px] shadow-xl mb-8">
+                    <div className="p-6 bg-white dark:bg-white rounded-[32px] shadow-xl mb-8">
                       <QRCodeSVG value={placedOrder.qrCode || ""} size={180} />
                     </div>
-                    <div className="flex items-center gap-2 mb-4 px-4 py-2 bg-green-50 text-green-600 rounded-full font-bold text-xs">
+                    <div className="flex items-center gap-2 mb-4 px-4 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full font-bold text-xs">
                        <CheckCircle2 size={16} /> Order {placedOrder.id} Active
                     </div>
-                    <h3 className="text-2xl font-bold mb-2">Scan at Canteen Kiosk</h3>
-                    <p className="text-gray-500 text-sm max-w-[280px]">
+                    <h3 className="text-2xl font-bold mb-2 dark:text-white">Scan at Canteen Kiosk</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm max-w-[280px]">
                       Your meal will be prepared for <b>{placedOrder.pickupTime}</b> at <b>{selectedLocation}</b>. Skip the line, just scan and pick!
                     </p>
                     <div className="mt-8 flex gap-3">
                       <Link 
                         to="/queue" 
-                        className="px-6 py-3 bg-gray-900 text-white rounded-2xl font-bold text-sm"
+                        className="px-6 py-3 bg-gray-900 dark:bg-orange-500 text-white rounded-2xl font-bold text-sm"
                       >
                          Live Tracker
                       </Link>
                       <button 
                         onClick={() => { setShowCart(false); setPlacedOrder(null); }}
-                        className="px-6 py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold text-sm"
+                        className="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-2xl font-bold text-sm"
                       >
                          Back to Menu
                       </button>
@@ -263,19 +269,19 @@ export default function Storefront() {
                         <div key={item.id} className="flex items-center gap-4 group">
                           <img src={item.image} className="w-16 h-16 rounded-2xl object-cover" />
                           <div className="flex-1">
-                            <h4 className="font-bold text-sm mb-0.5">{item.name}</h4>
+                            <h4 className="font-bold text-sm mb-0.5 dark:text-white">{item.name}</h4>
                             <p className="text-orange-500 font-bold text-sm">₹{item.price}</p>
                           </div>
-                          <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl">
+                          <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-xl">
                             <button onClick={() => removeFromCart(item.id)} className="p-1 text-gray-400 hover:text-red-500"><Minus size={14} /></button>
-                            <span className="w-4 text-center font-bold text-xs">{item.quantity}</span>
+                            <span className="w-4 text-center font-bold text-xs dark:text-white">{item.quantity}</span>
                             <button onClick={() => addToCart(item)} className="p-1 text-gray-400 hover:text-orange-500"><Plus size={14} /></button>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="p-6 bg-gray-50 rounded-[32px] border border-white space-y-6">
+                    <div className="p-6 bg-gray-50 dark:bg-gray-800/50 rounded-[32px] border border-white dark:border-gray-800 space-y-6">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
                            <ClockIcon size={12} /> Pre-Schedule Pickup
@@ -287,7 +293,7 @@ export default function Storefront() {
                               onClick={() => setPickupTime(time)}
                               className={cn(
                                 "py-2.5 rounded-xl text-[10px] font-black uppercase transition-all",
-                                pickupTime === time ? "bg-gray-900 text-white" : "bg-white text-gray-400 border border-gray-100"
+                                pickupTime === time ? "bg-gray-900 dark:bg-orange-500 text-white" : "bg-white dark:bg-gray-900 text-gray-400 border border-gray-100 dark:border-gray-800"
                               )}
                             >
                                {time}
@@ -307,7 +313,7 @@ export default function Storefront() {
                               onClick={() => setLocation(loc)}
                               className={cn(
                                 "py-2.5 rounded-xl text-[10px] font-black uppercase transition-all",
-                                selectedLocation === loc ? "bg-gray-900 text-white" : "bg-white text-gray-400 border border-gray-100"
+                                selectedLocation === loc ? "bg-gray-900 dark:bg-orange-500 text-white" : "bg-white dark:bg-gray-900 text-gray-400 border border-gray-100 dark:border-gray-800"
                               )}
                             >
                                {loc}
@@ -325,7 +331,7 @@ export default function Storefront() {
                              onClick={() => setPaymentMethod("wallet")}
                              className={cn(
                                "w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all text-left",
-                               paymentMethod === "wallet" ? "border-orange-500 bg-orange-50/50" : "border-gray-100 bg-white"
+                               paymentMethod === "wallet" ? "border-orange-500 bg-orange-50/50 dark:bg-orange-900/20" : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"
                              )}
                            >
                               <div className="flex items-center gap-3">
@@ -337,9 +343,9 @@ export default function Storefront() {
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t border-gray-200">
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                         <button 
-                          className="w-full p-4 bg-orange-100/50 text-orange-600 rounded-2xl flex items-center justify-center gap-3 font-bold text-[10px] uppercase tracking-widest"
+                          className="w-full p-4 bg-orange-100/50 dark:bg-orange-900/20 text-orange-600 rounded-2xl flex items-center justify-center gap-3 font-bold text-[10px] uppercase tracking-widest"
                         >
                            <Users size={16} /> Start Group Session
                         </button>
@@ -350,14 +356,14 @@ export default function Storefront() {
               </div>
 
               {!placedOrder && cart.length > 0 && (
-                <div className="mt-auto p-8 border-t border-gray-100 bg-white">
+                <div className="mt-auto p-8 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
                   <div className="flex items-center justify-between mb-6">
                     <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Total Amount</span>
-                    <span className="text-3xl font-black">₹{total}</span>
+                    <span className="text-3xl font-black dark:text-white">₹{total}</span>
                   </div>
                   <button 
                     onClick={handleCheckout}
-                    className="w-full py-5 bg-gray-900 text-white rounded-3xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-500/10 flex items-center justify-center gap-3"
+                    className="w-full py-5 bg-gray-900 dark:bg-orange-500 text-white rounded-3xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-500/10 flex items-center justify-center gap-3"
                   >
                     Place Scheduled Order
                     <ChevronRight size={20} />

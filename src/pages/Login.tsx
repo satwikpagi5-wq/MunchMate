@@ -1,5 +1,12 @@
-import React, { useState } from "react";
-import { supabase } from "../lib/supabase";
+import React, { useState, useRef, useEffect } from "react";
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  ConfirmationResult
+} from "firebase/auth";
+import { auth } from "../lib/firebase";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Mail, Phone, Lock, ChevronRight, Hash, ShieldCheck, AlertCircle } from "lucide-react";
@@ -15,43 +22,41 @@ export default function LoginPage() {
   const [step, setStep] = useState<"input" | "otp">("input");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   
   const navigate = useNavigate();
+  const recaptchaRef = useRef<HTMLDivElement>(null);
+  const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null);
+
+  useEffect(() => {
+    if (method === "phone" && !recaptchaVerifier.current && recaptchaRef.current) {
+        recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaRef.current, {
+            size: "invisible",
+            callback: () => {
+                // reCAPTCHA solved, allow signInWithPhoneNumber.
+            }
+        });
+    }
+  }, [method]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        if (signInError.message.includes("Invalid login credentials")) {
-          // Attempt sign up if login fails
-          const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: { role } // This is sent to the trigger!
-            }
-          });
-          
-          if (signUpError) {
-            setError(signUpError.message);
-          } else {
-            navigate(role === "admin" ? "/admin" : "/");
-          }
-        } else {
-          setError(signInError.message);
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate(role === "admin" ? "/admin" : "/");
+    } catch (err: any) {
+      if (err.code === "auth/user-not-found") {
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          navigate(role === "admin" ? "/admin" : "/");
+        } catch (innerErr: any) {
+          setError(innerErr.message);
         }
       } else {
-        navigate(role === "admin" ? "/admin" : "/");
+        setError(err.message);
       }
-    } catch (err: any) {
-      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -59,14 +64,13 @@ export default function LoginPage() {
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!recaptchaVerifier.current) return;
+    
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: phoneNumber,
-      });
-
-      if (error) throw error;
+      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier.current);
+      setConfirmationResult(result);
       setStep("otp");
     } catch (err: any) {
       setError("Failed to send code. Make sure format is +[countrycode][number]");
@@ -78,16 +82,12 @@ export default function LoginPage() {
 
   const handleOtpVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!confirmationResult) return;
+    
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: phoneNumber,
-        token: otp,
-        type: 'sms'
-      });
-
-      if (error) throw error;
+      await confirmationResult.confirm(otp);
       navigate(role === "admin" ? "/admin" : "/");
     } catch (err: any) {
       setError("Invalid OTP code. Please try again.");
@@ -107,10 +107,10 @@ export default function LoginPage() {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white border border-gray-100 p-8 rounded-[48px] shadow-2xl shadow-black/5"
+        className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-8 rounded-[48px] shadow-2xl shadow-black/5"
       >
         {/* Role Selector */}
-        <div className="flex gap-2 mb-10 p-1 bg-gray-50 rounded-2xl">
+        <div className="flex gap-2 mb-10 p-1 bg-gray-50 dark:bg-gray-800 rounded-2xl">
           <button 
             onClick={() => setRole("student")}
             className={cn(
@@ -138,10 +138,10 @@ export default function LoginPage() {
           )}>
             {role === "student" ? <Lock size={32} /> : <ShieldCheck size={32} />}
           </div>
-          <h2 className="text-3xl font-black tracking-tight mb-2">
+          <h2 className="text-3xl font-black tracking-tight mb-2 dark:text-white">
             {role === "student" ? "Munch. Study. Repeat." : "Kitchen Control"}
           </h2>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
             {role === "student" 
               ? "Join the MunchMate community at PU Goa." 
               : "Access the Merchant Dashboard & Live Orders."}
@@ -149,12 +149,12 @@ export default function LoginPage() {
         </div>
 
         {/* Method Toggle */}
-        <div className="flex p-1 bg-gray-50 rounded-2xl mb-8">
+        <div className="flex p-1 bg-gray-50 dark:bg-gray-800 rounded-2xl mb-8">
           <button 
             onClick={() => { setMethod("email"); setError(null); }}
             className={cn(
                "flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
-               method === "email" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
+               method === "email" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-400 hover:text-gray-600"
             )}
           >
             <Mail size={16} /> Email
@@ -163,7 +163,7 @@ export default function LoginPage() {
             onClick={() => { setMethod("phone"); setError(null); }}
             className={cn(
                "flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
-               method === "phone" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
+               method === "phone" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-400 hover:text-gray-600"
             )}
           >
             <Phone size={16} /> Phone
@@ -189,7 +189,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm dark:text-white"
                     placeholder={role === "student" ? "student@parul.ac.in" : "admin@parul.ac.in"}
                   />
                 </div>
@@ -203,7 +203,7 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm dark:text-white"
                     placeholder="••••••••"
                   />
                 </div>
@@ -239,18 +239,19 @@ export default function LoginPage() {
                         required
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                        className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm dark:text-white"
                         placeholder="+91 98765 43210"
                       />
                     </div>
                   </div>
+                  <div ref={recaptchaRef} />
                   <button 
                     disabled={loading}
                     className={cn(
                       "w-full py-5 text-white rounded-3xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl",
                       role === "student" 
-                        ? "bg-gray-900 hover:bg-orange-500 shadow-orange-500/10" 
-                        : "bg-gray-900 hover:bg-[#E2262E] shadow-red-500/10"
+                        ? "bg-gray-900 dark:bg-orange-500 hover:bg-orange-600 shadow-orange-500/10" 
+                        : "bg-gray-900 dark:bg-red-600 hover:bg-red-700 shadow-red-500/10"
                     )}
                   >
                     {loading ? "Sending Code..." : "Send Verification Code"}
@@ -269,7 +270,7 @@ export default function LoginPage() {
                         maxLength={6}
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm tracking-[1em] text-center font-bold"
+                        className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm tracking-[1em] text-center font-bold dark:text-white"
                         placeholder="000000"
                       />
                     </div>
@@ -287,7 +288,7 @@ export default function LoginPage() {
                   <button 
                     type="button"
                     onClick={() => setStep("input")}
-                    className="w-full text-center text-xs text-gray-400 hover:text-gray-600 font-bold uppercase tracking-tighter"
+                    className="w-full text-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-bold uppercase tracking-tighter"
                   >
                     Change Number
                   </button>
@@ -301,17 +302,17 @@ export default function LoginPage() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mt-6 p-4 bg-red-50 text-red-500 rounded-2xl flex items-start gap-3 text-xs"
+            className="mt-6 p-4 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-2xl flex items-start gap-3 text-xs"
           >
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
             <p className="font-medium leading-relaxed">{error}</p>
           </motion.div>
         )}
 
-        <div className="mt-12 pt-8 border-t border-gray-50">
+        <div className="mt-12 pt-8 border-t border-gray-50 dark:border-gray-800">
           <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest leading-relaxed">
             By signing in, you agree to the CampusCrave <br />
-            <span className="text-gray-900 font-bold">Terms of Service</span> and <span className="text-gray-900 font-bold">Privacy Policy</span>.
+            <span className="text-gray-900 dark:text-white font-bold">Terms of Service</span> and <span className="text-gray-900 dark:text-white font-bold">Privacy Policy</span>.
           </p>
         </div>
       </motion.div>
