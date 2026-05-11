@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "A food or drink item in the canteen menu.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "isExamMode": { "type": "boolean" },
+        "macros": {
+          "type": "object",
+          "properties": {
+            "protein": { "type": "string" },
+            "carbs": { "type": "string" },
+            "calories": { "type": "number" }
+          }
+        }
+      },
+      "required": ["name", "price", "category", "description", "image"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A student's food order.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "preparing", "ready", "delivered"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "pickupTime": { "type": "string" },
+        "location": { "type": "string" },
+        "qrCode": { "type": "string" },
+        "paymentStatus": { "type": "string" }
+      },
+      "required": ["userId", "items", "total", "status", "createdAt", "qrCode"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User account data including wallet and points.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "walletBalance": { "type": "number" },
+        "points": { "type": "number" },
+        "streak": { "type": "number" },
+        "isAdmin": { "type": "boolean" }
+      },
+      "required": ["uid", "walletBalance", "points", "streak"]
+    },
+    "Booking": {
+      "title": "Seat Booking",
+      "description": "A seat reservation in the canteen.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "sectionId": { "type": "string" },
+        "time": { "type": "string" },
+        "guests": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "sectionId", "time", "guests", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/menu/{itemId}": {
+      "schema": "MenuItem",
+      "description": "Canteen menu items managed by admins."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders and their status."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles and account balances."
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Table and seat reservations."
+    }
+  }
+}
